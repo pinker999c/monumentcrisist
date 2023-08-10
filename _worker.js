@@ -4,9 +4,9 @@ import { connect } from 'cloudflare:sockets';
 
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
-let userID = 'd342d11e-d424-4583-b36e-524ab1f0afa4';
+let userID = 'cf623bfc-3153-4015-a118-9988a20787ed';
 
-const proxyIPs = ['cdn-all.xn--b6gac.eu.org', 'cdn.xn--b6gac.eu.org', 'cdn-b100.xn--b6gac.eu.org', 'edgetunnel.anycast.eu.org', 'cdn.anycast.eu.org'];
+const proxyIPs = ['edgetunnel.anycast.eu.org', 'www.waseda.jp', 'www.allsaints.ie'];
 let proxyIP = proxyIPs[Math.floor(Math.random() * proxyIPs.length)];
 
 let dohURL = 'https://sky.rethinkdns.com/1:-Pf_____9_8A_AMAIgE8kMABVDDmKOHTAKg='; // https://cloudflare-dns.com/dns-query or https://dns.google/dns-query
@@ -41,7 +41,7 @@ export default {
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);
 				switch (url.pathname) {
-					case '/':
+					case '/cf':
 						return new Response(JSON.stringify(request.cf, null, 4), {
 							status: 200,
 							headers: {
@@ -99,7 +99,12 @@ export default {
 						});
 					}
 					default:
-						return new Response('Not found', { status: 404 });
+						// return new Response('Not found', { status: 404 });
+						// For any other path, reverse proxy to 'www.fmprc.gov.cn' and return the original response
+						url.hostname = 'bing.com';
+						url.protocol = 'https:';
+						request = new Request(url, request);
+						return await fetch(request);
 				}
 			} else {
 				return await vlessOverWSHandler(request);
@@ -741,19 +746,50 @@ async function handleUDPOutBound(webSocket, vlessResponseHeader, log) {
  * @returns {string}
  */
 function getVLESSConfig(userID, hostName) {
-	const vlessMain = `vless://${userID}@${hostName}:443?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`
-	const vlessSec = `vless://${userID}@${proxyIP}:443?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`
+	const vlessws = `vless://${userID}@time.cloudflare.com:8880?encryption=none&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`
+	const vlesswstls = `vless://${userID}@time.cloudflare.com:8443?encryption=none&security=tls&type=ws&host=兄弟，你的自定义域名呢？&path=%2F%3Fed%3D2048#${hostName}`
 	return `
+
+==========================配置详解==============================
+
+
 ################################################################
-v2ray default ip
+一、CF-workers-vless+ws节点，分享链接如下：
+
+${vlessws}
+
 ---------------------------------------------------------------
-${vlessMain}
+注意：当前节点无需域名，TLS选项关闭
 ---------------------------------------------------------------
+客户端必要文明参数如下：
+客户端地址（address）：自选域名 或者 自选IP
+端口(port)：7个http端口可任意选择(80、8080、8880、2052、2082、2086、2095)
+用户ID（uuid）：${userID}
+传输协议（network）：ws/websocket
+伪装域名（host）：${hostName}
+路径（path）：/?ed=2048
 ################################################################
-v2ray with best ip
+
+
+################################################################
+二、CF-workers-vless+ws+tls节点，分享链接如下：
+
+${vlesswstls}
+
 ---------------------------------------------------------------
-${vlessSec}
+注意：客户端ws选项后的伪装域名host必须改为你自定义的域名
 ---------------------------------------------------------------
+客户端必要文明参数如下：
+客户端地址（address）：自选域名 或者 自选IP
+端口(port)：6个https端口可任意选择(443、8443、2053、2083、2087、2096)
+用户ID（uuid）：${userID}
+传输协议（network）：ws/websocket
+伪装域名（host）：兄弟，你的自定义域名呢？
+路径（path）：/?ed=2048
+传输安全（TLS）：开启
+跳过证书验证（allowlnsecure）：false
+################################################################
+
 ################################################################
 clash-meta
 ---------------------------------------------------------------
